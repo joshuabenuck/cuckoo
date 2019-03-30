@@ -1,0 +1,11 @@
+{
+	"name": "cuckoo-client",
+	"version": "0.0.1",
+	"description": "client for team timer",
+	"dependencies": {
+		"socket.io": "^2.2.0"
+	},
+	"scripts": {
+		"run": "node main.js"
+	}
+}
