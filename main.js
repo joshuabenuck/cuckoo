@@ -7,6 +7,21 @@ const joinCuckoo = () => {
 
 joinCuckoo()
 
+let LISTENER_COUNT = 0
+const on = (event, listener) => {
+	LISTENER_COUNT+=1
+	io.on(event, listener)
+}
+
+const off = (event, listener) => {
+	LISTENER_COUNT-=1
+	io.off(event, listener)
+	if (LISTENER_COUNT == 0) {
+		console.log("No more listeners. Exiting.")
+		io.disconnect()
+	}
+}
+
 const CONCISE = "concise"
 const ALL = {depth: null}
 
@@ -40,7 +55,7 @@ const events = [
 
 const debug_event = (event, depth) => {
 	console.log(`Registering listenter for the ${event} event.`)
-	io.on(event, (e) => { debug(event, e, depth) })
+	on(event, (e) => { debug(event, e, depth) })
 }
 
 const debug_all = (depth) => {
@@ -49,6 +64,7 @@ const debug_all = (depth) => {
 	})
 }
 
+// If only the keep alive is running, quit anyway.
 io.on("ping", (e) => {
 	io.emit("pong");
 });
@@ -116,9 +132,9 @@ const startTimer = (type, duration) => {
 		}
 		console.log(`Started ${type} timer for ${duration} minutes.`)
 		io.emit("start timer", duration)
-		io.off("update activity", listener)
+		off("update activity", listener)
 	}
-	io.on("update activity", listener)
+	on("update activity", listener)
 }
 
 if (argv["work"]) {
