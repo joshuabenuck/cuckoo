@@ -3,9 +3,9 @@
 	"version": "0.0.1",
 	"description": "client for team timer",
 	"dependencies": {
-		"socket.io": "^2.2.0"
+		"socket.io": "^2.2.0",
+		"yargs": "^13.2.2"
 	},
 	"scripts": {
-		"run": "node main.js"
 	}
 }
