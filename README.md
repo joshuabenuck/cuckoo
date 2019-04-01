@@ -8,7 +8,7 @@ Most common usage scenario. Start a work or break timer: `node main.js --session
 
 # Options
 * *--session <name>*: Required paramter. This is what comes after the slash in your https://cuckoo.team/ url.
-* *--work <minutes>*: Start a work for the specified number of minutes.\
+* *--work <minutes>*: Start a work for the specified number of minutes.
 * *--break <minutes>*: Start a break for the specified number of minutes.
 * *--trace-all*: Trace all events sents by the server or other clients.
 * *--trace-<event-name>*: Trace the specified event. Run with --help to see a list.
