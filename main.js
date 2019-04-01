@@ -10,7 +10,7 @@ const logger = winston.createLogger({
 
 })
 
-const TIMER_FINISHED = "finish-timer"
+const TIMER_FINISHED = "finish timer"
 const events = [
 	"connection",
 	"ping",
@@ -35,6 +35,9 @@ const describeTraceOptions = (yarg) => {
 	return yarg
 }
 
+const CONCISE = "concise"
+const ALL = {depth: null}
+
 yarg = require("yargs")
 argv = describeTraceOptions(yarg)
 	.describe("trace-all", "Register listeners for all events.")
@@ -44,6 +47,7 @@ argv = describeTraceOptions(yarg)
 	.describe("break <x>", "Start a break for <x> minutes.")
 	.describe("work <x>", "Start a break for <x> minutes.")
 	.describe("session <x>", "Join the <x> session.")
+	.describe("status", "Shows current timer status.")
 	.demandOption("session")
 	.parse()
 if (argv.level == "all") argv.level=ALL
@@ -78,9 +82,6 @@ const off = (event, listener) => {
 		io.disconnect()
 	}
 }
-
-const CONCISE = "concise"
-const ALL = {depth: null}
 
 const trace = (name, e, depth) => {
 	if (depth == CONCISE) {
@@ -135,10 +136,10 @@ for (let event of Object.keys(argv)) {
 }
 
 const startTimer = (type, duration) => {
-	let sessionType = null
 	let waitingForSkip = false
 	let desiredType = type
 	listener = (e) => {
+    let sessionType = e.sessions.currentType
 		if (!waitingForSkip && sessionType != desiredType) {
 			waitingForSkip = true
 			skipSessionType()
@@ -146,6 +147,17 @@ const startTimer = (type, duration) => {
 		}
 		console.log(`Started ${type} timer for ${duration} minutes.`)
 		io.emit("start timer", duration)
+		off("update activity", listener)
+	}
+	on("update activity", listener)
+}
+
+const getStatus = () => {
+	listener = (e) => {
+    console.log(`Session type is: ${e.sessions.currentType}.`)
+    if (e.timer.current != 0) {
+      console.log(`It has ${e.timer.currentFormatted} left.`)
+    }
 		off("update activity", listener)
 	}
 	on("update activity", listener)
@@ -159,3 +171,6 @@ if (argv["break"]) {
 	startTimer("breakTime", argv["break"])
 }
 
+if (argv["status"]) {
+  getStatus()
+}
