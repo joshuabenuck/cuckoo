@@ -4,8 +4,8 @@
 	"description": "client for team timer",
 	"dependencies": {
 		"socket.io": "^2.2.0",
+		"winston": "^3.2.1",
 		"yargs": "^13.2.2"
 	},
-	"scripts": {
-	}
+	"scripts": {}
 }

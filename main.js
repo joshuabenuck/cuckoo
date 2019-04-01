@@ -1,40 +1,12 @@
-var io = require('socket.io-client')("https://cuckoo.team/iamatest");
+const winston = require("winston")
+const logger = winston.createLogger({
+	level: 'info',
+	format: winston.format.json(),
+	transports: [
+		new winston.transports.Console()
+	]
 
-const joinCuckoo = () => {
-	io.emit("update user", "PyPortal")
-	//io.emit("change email", "")
-}
-
-joinCuckoo()
-
-let LISTENER_COUNT = 0
-const on = (event, listener) => {
-	LISTENER_COUNT+=1
-	io.on(event, listener)
-}
-
-const off = (event, listener) => {
-	LISTENER_COUNT-=1
-	io.off(event, listener)
-	if (LISTENER_COUNT == 0) {
-		console.log("No more listeners. Exiting.")
-		io.disconnect()
-	}
-}
-
-const CONCISE = "concise"
-const ALL = {depth: null}
-
-const debug = (name, e, depth) => {
-	if (depth == CONCISE) {
-		console.log(name)
-		return
-	}
-	obj = {}
-	obj[name] = true
-	obj["e"] = e
-	console.dir(obj, depth);
-}
+})
 
 const TIMER_FINISHED = "finish-timer"
 const events = [
@@ -53,21 +25,81 @@ const events = [
 	"update roadmap"
 ]
 
-const debug_event = (event, depth) => {
-	console.log(`Registering listenter for the ${event} event.`)
-	on(event, (e) => { debug(event, e, depth) })
+const describeTraceOptions = (yarg) => {
+	events.forEach((event) => {
+		let e = event.replace(" ", "-")
+		yarg.describe(`trace-${e}`, `Registers listener for the ${event} event.`)
+	})
+	return yarg
 }
 
-const debug_all = (depth) => {
-	events.forEach((event) => {
-		debug_event(event, depth)
-	})
-}
+yarg = require("yargs")
+argv = describeTraceOptions(yarg)
+	.describe("trace-all", "Register listeners for all events.")
+	.alias("level", "l")
+	.describe("level", "Sets the event trace detail level.")
+	.choices("level", ["all", "concise"])
+	.describe("break <x>", "Start a break for <x> minutes.")
+	.describe("work <x>", "Start a break for <x> minutes.")
+	.describe("session <x>", "Join the <x> session.")
+	.demandOption("session")
+	.parse()
+if (argv.level == "all") argv.level=ALL
+if (argv.level == "concise") argv.level=CONCISE
+
+const io = require('socket.io-client')(`https://cuckoo.team/${argv.session}`)
 
 // If only the keep alive is running, quit anyway.
 io.on("ping", (e) => {
 	io.emit("pong");
 });
+
+
+const joinCuckoo = () => {
+	io.emit("update user", "PyPortal")
+	//io.emit("change email", "")
+}
+
+joinCuckoo()
+
+let LISTENER_COUNT = 0
+const on = (event, listener) => {
+	LISTENER_COUNT+=1
+	io.on(event, listener)
+}
+
+const off = (event, listener) => {
+	LISTENER_COUNT-=1
+	io.off(event, listener)
+	if (LISTENER_COUNT == 0) {
+		logger.debug("No more listeners. Exiting.")
+		io.disconnect()
+	}
+}
+
+const CONCISE = "concise"
+const ALL = {depth: null}
+
+const trace = (name, e, depth) => {
+	if (depth == CONCISE) {
+		logger.info(name)
+		return
+	}
+	obj = {e}
+	obj[name] = true
+	console.dir(obj, depth);
+}
+
+const traceEvent = (event, depth) => {
+	logger.info(`Registering listenter for the ${event} event.`)
+	on(event, (e) => { trace(event, e, depth) })
+}
+
+const traceAll = (depth) => {
+	events.forEach((event) => {
+		traceEvent(event, depth)
+	})
+}
 
 const skipSessionType = () => {
 	io.emit("skip session");
@@ -89,34 +121,14 @@ const clearRoadmap = (e) => {
 	io.emit("clear roadmap")
 }
 
-const describeDebugOptions = (yarg) => {
-	events.forEach((event) => {
-		let e = event.replace(" ", "-")
-		yarg.describe(`debug-${e}`, `Registers listener for the ${event} event.`)
-	})
-	return yarg
-}
-
-yarg = require("yargs")
-argv = describeDebugOptions(yarg)
-	.describe("debug-all", "Register listeners for all events.")
-	.alias("level", "l")
-	.describe("level", "Sets the level to log at.")
-	.choices("level", ["all", "concise"])
-	.describe("break <x>", "Start a break for <x> minutes.")
-	.describe("work <x>", "Start a break for <x> minutes.")
-	.parse()
-if (argv.level == "all") argv.level=ALL
-if (argv.level == "concise") argv.level=CONCISE
-
-if (argv["debug-all"]) {
-	debug_all(argv.level)
+if (argv["trace-all"]) {
+	traceAll(argv.level)
 }
 
 for (let event of Object.keys(argv)) {
-	if (event.startsWith("debug-")
+	if (event.startsWith("trace-")
 		&& event.indexOf("all") == -1) {
-		debug_event(event.split("debug-")[1].replace("-", " "), argv.level)
+		traceEvent(event.split("trace-")[1].replace("-", " "), argv.level)
 	}
 }
 
