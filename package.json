@@ -6,6 +6,7 @@
 	"license": "MIT",
 	"dependencies": {
 		"crocket": "^0.9.11",
+		"js-yaml": "^3.13.0",
 		"pm2": "^3.4.1",
 		"socket.io": "^2.2.0",
 		"winston": "^3.2.1",

@@ -1,16 +1,44 @@
 #!/usr/bin/env node
 
 const winston = require("winston")
+const transports = {
+  console: new winston.transports.Console()
+}
 const logger = winston.createLogger({
 	level: 'info',
 	format: winston.format.json(),
 	transports: [
-		new winston.transports.Console()
+    transports.console
 	]
 
 })
 
+const applyDefaults = (argv) => {
+  if (argv["log-level"]) {
+    logger.level = argv["log-level"]
+    transports.console.level = arg["log-level"]
+  }
+
+  const yaml = require('js-yaml');
+  const fs   = require('fs');
+
+  try {
+    var config = yaml.safeLoad(fs.readFileSync('~/.cuckoo', 'utf8'));
+  } catch (e) {
+    logger.debug("error while loading config file.")
+    logger.debug(e)
+  }
+
+  logger.debug(config)
+  argv.session || (config.session && (argv.session = config.session))
+  argv.defaultBreak = 5
+  config.defaultBreak && (argv.defaultBreak = config.defaultBreak)
+  argv.defaultWork = 25
+  config.defaultWork && (argv.defaultWork = config.defaultWork)
+}
+
 const TIMER_FINISHED = "finish timer"
+const UPDATE_SESSIONS = "update sessions"
 const events = [
 	"connection",
 	"ping",
@@ -18,7 +46,7 @@ const events = [
 	TIMER_FINISHED,
 	"update user",
 	"update users",
-	"update sessions",
+  UPDATE_SESSIONS,
 	"update settings",
 	"update activities",
 	"update activity",
@@ -49,6 +77,9 @@ argv = describeTraceOptions(yarg)
 	.describe("session <x>", "Join the <x> session.")
 	.describe("status", "Shows current timer status.")
 	.describe("tmux-server", "Starts daemon thread to handle requests from the tmux status line client.")
+  .describe("log-level", "Set the log level.")
+  .describe("prompt", "Start a timer after prompting for info.")
+  //.middleware(applyDefaults, true)
 	.demandOption("session")
 	.parse()
 if (argv.level == "all") argv.level=ALL
@@ -61,9 +92,8 @@ io.on("ping", (e) => {
 	io.emit("pong");
 });
 
-
 const joinCuckoo = () => {
-	io.emit("update user", "PyPortal")
+	io.emit("update user", "Cuckoo CLI")
 	//io.emit("change email", "")
 }
 
@@ -95,7 +125,7 @@ const trace = (name, e, depth) => {
 }
 
 const traceEvent = (event, depth) => {
-	logger.info(`Registering listenter for the ${event} event.`)
+	logger.info(`Registering listener for the ${event} event.`)
 	on(event, (e) => { trace(event, e, depth) })
 }
 
@@ -148,9 +178,9 @@ const startTimer = (type, duration) => {
 		}
 		console.log(`Started ${type} timer for ${duration} minutes.`)
 		io.emit("start timer", duration)
-		off("update activity", listener)
+		off(UPDATE_SESSIONS, listener)
 	}
-	on("update activity", listener)
+	on(UPDATE_SESSIONS, listener)
 }
 
 const getStatus = () => {
@@ -159,9 +189,9 @@ const getStatus = () => {
     if (e.timer.current != 0) {
       console.log(`It has ${e.timer.currentFormatted} left.`)
     }
-		off("update activity", listener)
+		off(UPDATE_SESSIONS, listener)
 	}
-	on("update activity", listener)
+	on(UPDATE_SESSIONS, listener)
 }
 
 if (argv["work"]) {
@@ -219,6 +249,12 @@ if (argv["tmux-server"]) {
 	on("finish timer", finish_timer)
 	server.on("/timer", timer)
 
+}
+
+if (argv["prompt"]) {
+  // What type of timer? [Enter for '${current_type}']
+  // How long? [Enter for '${default_for_type}'
+  // startTimer(type, length)
 }
 
 if (LISTENER_COUNT == 0) {
