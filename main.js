@@ -48,6 +48,7 @@ argv = describeTraceOptions(yarg)
 	.describe("work <x>", "Start a break for <x> minutes.")
 	.describe("session <x>", "Join the <x> session.")
 	.describe("status", "Shows current timer status.")
+	.describe("tmux-server", "Starts daemon thread to handle requests from the tmux status line client.")
 	.demandOption("session")
 	.parse()
 if (argv.level == "all") argv.level=ALL
@@ -173,4 +174,53 @@ if (argv["break"]) {
 
 if (argv["status"]) {
   getStatus()
+}
+
+if (argv["tmux-server"]) {
+	let current_formatted = undefined
+	let current_type = undefined
+	let finished = undefined
+	let ipc = require("crocket"),
+		server = new ipc();
+	update_sessions = (e) => {
+	    finished = undefined
+	    current_formatted = undefined
+	    current_type = e.sessions.currentType == "work" ? "Work" : "Break"
+	}
+	update_timer = (e) => {
+		current_formatted = e.currentFormatted
+	}
+	finish_timer = (e) => {
+		finished = "Finished!"
+	}
+	timer = (_payload) => {
+		if (finished) {
+			server.emit("/status", finished)
+			return
+		}
+		if (current_formatted) {
+			server.emit("/status", `${current_type}: ${current_formatted}`)
+			return
+		}
+		server.emit("/status", `Next: ${current_type}`)
+	}
+	// Start listening, this example communicate by file sockets
+	server.listen({ "path": "/tmp/cuckoo.sock", reconnect: 1 }, (e) => { 
+		// Fatal errors are supplied as the first parameter to callback
+		if(e) throw e; 
+		// All is well if we got this far
+		console.log('IPC listening on /tmp/cuckoo.sock');
+	});
+
+	// React to communication errors
+	server.on('error', (e) => { console.error('Communication error occurred: ', e); });
+	on("update sessions", update_sessions)
+	on("update timer", update_timer)
+	on("finish timer", finish_timer)
+	server.on("/timer", timer)
+
+}
+
+if (LISTENER_COUNT == 0) {
+	io.disconnect()
 }
