@@ -1,20 +1,20 @@
 {
-	"name": "cuckoo-client",
-	"version": "0.0.1",
-	"description": "client for team timer",
-	"repository": "joshuabenuck/cuckoo",
-	"license": "MIT",
-	"dependencies": {
-		"crocket": "^0.9.11",
-		"js-yaml": "^3.13.0",
-		"pm2": "^3.4.1",
-		"socket.io": "^2.2.0",
-		"winston": "^3.2.1",
-		"yargs": "^13.2.2"
-	},
-	"bin": {
-		"cuckoo": "./main.js",
-		"cuckoo-tmux": "./tmux.js"
-	},
-	"scripts": {}
+  "name": "cuckoo-client",
+  "version": "0.0.1",
+  "description": "client for team timer",
+  "repository": "joshuabenuck/cuckoo",
+  "license": "MIT",
+  "dependencies": {
+    "crocket": "^0.9.11",
+    "js-yaml": "^3.13.0",
+    "pm2": "^3.4.1",
+    "socket.io": "^2.2.0",
+    "winston": "^3.2.1",
+    "yargs": "^13.2.2"
+  },
+  "bin": {
+    "cuckoo": "./main.js",
+    "cuckoo-tmux": "./tmux.js"
+  },
+  "scripts": {}
 }
