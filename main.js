@@ -166,7 +166,7 @@ for (let event of Object.keys(argv)) {
   }
 }
 
-const startTimer = (type, duration) => {
+const startTimer = (type, duration, currentType) => {
   let waitingForSkip = false
   let desiredType = type
   listener = (e) => {
@@ -179,6 +179,13 @@ const startTimer = (type, duration) => {
     console.log(`Started ${type} timer for ${duration} minutes.`)
     io.emit("start timer", duration)
     off(UPDATE_SESSIONS, listener)
+  }
+  // HACK: Call the event handler directly
+  // This really needs to be cleaner
+  // Callbacks are getting out of control
+  if(currentType) {
+    listener({sessions: {currentType: currentType}})
+    if (!waitingForSkip) return
   }
   on(UPDATE_SESSIONS, listener)
 }
@@ -244,17 +251,60 @@ if (argv["tmux-server"]) {
 
   // React to communication errors
   server.on('error', (e) => { console.error('Communication error occurred: ', e); });
-  on("update sessions", update_sessions)
+  on(UPDATE_SESSIONS, update_sessions)
   on("update timer", update_timer)
-  on("finish timer", finish_timer)
+  on(FINISH_TIMER, finish_timer)
   server.on("/timer", timer)
 
 }
 
 if (argv["prompt"]) {
-  // What type of timer? [Enter for '${current_type}']
-  // How long? [Enter for '${default_for_type}'
-  // startTimer(type, length)
+  // TODO: Load from file
+  // TODO: Allow default to be the last used value
+  const default_lengths = {
+    "work": "25",
+    "break": "5"
+  }
+  const readline = require("readline")
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+  update_sessions = (e) => {
+    let current_type = e.sessions.currentType == "work" ? "work" : "break"
+    let type=current_type, length=default_lengths[current_type]
+    let type_prompt = () => {
+      rl.question(`What type of timer? [Enter for '${type}']\n`, (answer) => {
+        if(answer) {
+          if(answer != "w" && answer != "work" && answer != "b" && answer != "break") {
+            type_prompt()
+            return
+          }
+          if(answer == "w") answer = "work"
+          if(answer == "b") answer = "break"
+          type = answer
+        }
+        let length_prompt = () => {
+          rl.question(`How long? [Enter for '${default_lengths[type]}']\n`, (answer) => {
+            if(answer) {
+              number = parseInt(answer)
+              if(isNaN(number)) { 
+                length_prompt()
+                return
+              }
+              length = answer
+            }
+            rl.close()
+            startTimer(type, length, current_type == "break" ? "breakTime" : "work")
+            off(UPDATE_SESSIONS, update_sessions)
+          })
+        }
+        length_prompt()
+      })
+    }
+    type_prompt()
+  }
+  on(UPDATE_SESSIONS, update_sessions)
 }
 
 if (LISTENER_COUNT == 0) {
