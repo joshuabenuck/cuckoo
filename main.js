@@ -39,10 +39,12 @@ const applyDefaults = (argv) => {
 
 const TIMER_FINISHED = "finish timer"
 const UPDATE_SESSIONS = "update sessions"
+const UPDATE_TIMER = "update timer"
+const PING = "ping"
 const events = [
   "connection",
-  "ping",
-  "update timer",
+  PING,
+  UPDATE_TIMER,
   TIMER_FINISHED,
   "update user",
   "update users",
@@ -88,7 +90,7 @@ if (argv.level == "concise") argv.level=CONCISE
 const io = require('socket.io-client')(`https://cuckoo.team/${argv.session}`)
 
 // If only the keep alive is running, quit anyway.
-io.on("ping", (e) => {
+io.on(PING, (e) => {
   io.emit("pong");
 });
 
@@ -155,13 +157,12 @@ const clearRoadmap = (e) => {
   io.emit("clear roadmap")
 }
 
-if (argv["trace-all"]) {
-  traceAll(argv.level)
-}
-
 for (let event of Object.keys(argv)) {
-  if (event.startsWith("trace-")
-    && event.indexOf("all") == -1) {
+  if (event.startsWith("trace-")) {
+    if event.indexOf("all") != -1) {
+      traceAll(argv.level)
+      continue
+    }
     traceEvent(event.split("trace-")[1].replace("-", " "), argv.level)
   }
 }
@@ -217,19 +218,14 @@ if (argv["tmux-server"]) {
   let current_formatted = undefined
   let current_type = undefined
   let finished = undefined
-  let ipc = require("crocket"),
-    server = new ipc();
+  let ipc = require("crocket"), server = new ipc();
   update_sessions = (e) => {
       finished = undefined
       current_formatted = undefined
       current_type = e.sessions.currentType == "work" ? "Work" : "Break"
   }
-  update_timer = (e) => {
-    current_formatted = e.currentFormatted
-  }
-  finish_timer = (e) => {
-    finished = "Finished!"
-  }
+  update_timer = (e) => { current_formatted = e.currentFormatted }
+  finish_timer = (e) => { finished = "Finished!" }
   timer = (_payload) => {
     if (finished) {
       server.emit("/status", finished)
@@ -241,21 +237,16 @@ if (argv["tmux-server"]) {
     }
     server.emit("/status", `Next: ${current_type}`)
   }
-  // Start listening, this example communicate by file sockets
   server.listen({ "path": "/tmp/cuckoo.sock", reconnect: 1 }, (e) => { 
-    // Fatal errors are supplied as the first parameter to callback
     if(e) throw e; 
-    // All is well if we got this far
     console.log('IPC listening on /tmp/cuckoo.sock');
   });
 
-  // React to communication errors
   server.on('error', (e) => { console.error('Communication error occurred: ', e); });
   on(UPDATE_SESSIONS, update_sessions)
-  on("update timer", update_timer)
-  on(FINISH_TIMER, finish_timer)
+  on(UPDATE_TIMER, update_timer)
+  on(TIMER_FINISHED, finish_timer)
   server.on("/timer", timer)
-
 }
 
 if (argv["prompt"]) {
@@ -287,11 +278,7 @@ if (argv["prompt"]) {
         let length_prompt = () => {
           rl.question(`How long? [Enter for '${default_lengths[type]}']\n`, (answer) => {
             if(answer) {
-              number = parseInt(answer)
-              if(isNaN(number)) { 
-                length_prompt()
-                return
-              }
+              if(isNaN(parseInt(answer))) { length_prompt(); return }
               length = answer
             }
             rl.close()

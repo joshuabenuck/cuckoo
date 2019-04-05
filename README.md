@@ -34,7 +34,10 @@ Command utilities to interact with https://cuckoo.team.
 - [x] Add the ability to get timer type and status from the command line.
 - [ ] Add ability to set username.
 - [ ] Add ability to default things like session name and user.
-- [ ] Add --prompt to start a timer based on user input.
+- [ ] Add ability to override default config location.
+- [x] Add --prompt to start a timer based on user input.
 - [ ] Add curses based interface suitable for use in a small tmux pane.
+- [ ] Add tmux plugin?
+- [ ] Add unit tests.
 - [ ] Others?
 
